@@ -34,7 +34,7 @@ David Quiroga, Prasanna Date, Raphael Pooser.
 
 If you are doing any research using this source code, please cite the following paper:
 
-  David Quiroga, Prasanna Date, Raphael Pooser. Discriminating Quantum States with Quantum Machine Learning. IEEE International Conference on Rebooting Computing, 2021.
+> David Quiroga, Prasanna Date, Raphael Pooser. Discriminating Quantum States with Quantum Machine Learning. IEEE International Conference on Rebooting Computing, 2021.
       
 ## License
 
