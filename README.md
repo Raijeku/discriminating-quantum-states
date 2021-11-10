@@ -1,3 +1,6 @@
+[![GitHub license](https://img.shields.io/github/license/Raijeku/discriminating-quantum-states)](https://github.com/Raijeku/discriminating-quantum-states/blob/main/LICENSE)
+
+
 # Discriminating Quantum States with Quantum Machine Learning
 
 This repository contains all the source code used to generate results presented in "[Discriminating Quantum States with Quantum Machine Learning](https://qce.quantum.ieee.org/posters-program/#ps14)".
