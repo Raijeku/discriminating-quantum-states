@@ -5,8 +5,9 @@ This repository contains all the source code used to generate results presented 
 ## Contents
 
 * ``qkmeans.py``: Module for quantum k-means algorithm with a class containing sk-learn style functions resembling the k-means algorithm.
-* ``classical_correlation.ipynb``: Classical correlation analysis for the IBMQ Bogota device using Pearson Correlation coefficients and the k-means algorithm.
-* ``quantum_correlation.ipynb``: Quantum correlation analysis for the IBMQ Bogota device using Pearson Correlation coefficients and the qk-means algorithm.
+* ``dataset.ipynb``: Code for retrieval of in-phase and quadrature (IQ) signal data from IBMQ Bogota after applying pulses that drive the 0 and 1 qubits to the |0> and |1> states. Arrays of signal data are retrieved from |00>, |01>, |10> and |11> prepared state schedules.
+* ``classical_correlation.ipynb``: Classical correlation analysis for IBMQ Bogota using Pearson Correlation coefficients and the k-means algorithm.
+* ``quantum_correlation.ipynb``: Quantum correlation analysis for IBMQ Bogota using Pearson Correlation coefficients and the qk-means algorithm.
 
 ## Usage example
    
