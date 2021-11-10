@@ -1,4 +1,4 @@
-"""Module for quantum k-means algorithm with class containing sk-learn style functions resembling the k-means algorithm.
+"""Module for quantum k-means algorithm with a class containing sk-learn style functions resembling the k-means algorithm.
 
 This module contains the QuantumKMeans class for clustering according to euclidian distances calculated by running quantum circuits. 
 
@@ -6,11 +6,13 @@ Typical usage example:
 
     import numpy as np
     import pandas as pd
+    from qkmeans import *
+
     backend = Aer.get_backend('qasm_simulator')
     X = pd.DataFrame(np.array([[1, 2], [1, 4], [1, 0], [10, 2], [10, 4], [10, 0]]))
-    quantum_k_means = QuantumKMeans(backend, n_clusters=2, verbose=True)
-    quantum_k_means.fit(X)
-    print(quantum_k_means.labels_)
+    qk_means = QuantumKMeans(backend, n_clusters=2, verbose=True)
+    qk_means.fit(X)
+    print(qk_means.labels_)
 """
 import numpy as np
 import pandas as pd
