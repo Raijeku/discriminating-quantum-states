@@ -21,9 +21,9 @@ import numpy as np
 import pandas as pd
 from qkmeans import *
 
-backend = Aer.get_backend('qasm_simulator')
+backend = IBMQ.load_account().get_backend('ibmq_qasm_simulator')
 X = pd.DataFrame(np.array([[1, 2], [1, 4], [1, 0], [10, 2], [10, 4], [10, 0]]))
-qk_means = QuantumKMeans(backend, n_clusters=2, verbose=True)
+qk_means = QuantumKMeans(backend, n_clusters=2, verbose=True, map_type='angle')
 qk_means.fit(X)
 print(qk_means.labels_) 
 ```

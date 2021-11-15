@@ -8,9 +8,9 @@ This module contains the QuantumKMeans class for clustering according to euclidi
     import pandas as pd
     from qkmeans import *
 
-    backend = Aer.get_backend('qasm_simulator')
+    backend = IBMQ.load_account().get_backend('ibmq_qasm_simulator')
     X = pd.DataFrame(np.array([[1, 2], [1, 4], [1, 0], [10, 2], [10, 4], [10, 0]]))
-    qk_means = QuantumKMeans(backend, n_clusters=2, verbose=True)
+    qk_means = QuantumKMeans(backend, n_clusters=2, verbose=True, map_type='angle')
     qk_means.fit(X)
     print(qk_means.labels_)
 """
@@ -50,7 +50,7 @@ def preprocess(points,map_type='angle',norm_relevance=False):
     elif map_type == 'probability': p_points = normalize(points[:])
     return p_points
 
-def distance(x,y,backend,map_type='angle'):
+def distance(x,y,backend,map_type='angle',norm_relevance=False):
     """Finds the distance between two data points by mapping the data points onto qubits using amplitude or angle encoding and then using a swap test.
 
     The algorithm performs angle encoding if the type is 'angle' and amplitude encoding if the type is 'probability'.
@@ -62,12 +62,13 @@ def distance(x,y,backend,map_type='angle'):
         map_type: {'angle', 'probability'} Specify the type of data encoding. 
             'angle': Uses U3 gates with its theta angle being the phase angle of the complex data point. 
             'probability': Relies on data normalization to preprocess the data to acquire a norm of 1.
+        norm_relevance: If true, maps two-dimensional data onto 2 angles, one for the angle between both data points and another for the magnitude of the data points.
 
     Returns:
         distance: Distance between the two data points.
     """
-    if x.size == 2:
-        if map_type == 'angle':
+    if map_type == 'angle':
+        if x.size == 2:
             complexes_x = x[0] + 1j*x[1]
             complexes_y= y[0] + 1j*y[1]
             theta_1 = np.angle(complexes_x)
@@ -91,28 +92,8 @@ def distance(x,y,backend,map_type='angle'):
             result = job.result()
             data = result.get_counts()
             if len(data)==1: return 0.0
-            else: return data['001']/1024.0
-        elif map_type == 'probability':
-            qr = QuantumRegister(3, name="qr")
-            cr = ClassicalRegister(3, name="cr")
-
-            qc = QuantumCircuit(qr, cr, name="k_means")
-            qc.initialize(x,1)
-            qc.initialize(y,2)
-
-            qc.h(qr[0])
-            qc.cswap(qr[0], qr[1], qr[2])
-            qc.h(qr[0])
-
-            qc.measure(qr[0], cr[0])
-            qc.reset(qr)
-            job = execute(qc,backend=backend, shots=1024)
-            result = job.result()
-            data = result.get_counts()
-            if len(data)==1: return 0.0
-            else: return data[list(data)[-1] == '1']
-    elif x.size == 3:
-        if map_type == 'angle':
+            else: return data['001']/1024.
+        elif x.size == 3 and norm_relevance == True:
             complexes_x = x[0] + 1j*x[1]
             complexes_y= y[0] + 1j*y[1]
             theta_1 = np.angle(complexes_x)
@@ -142,31 +123,30 @@ def distance(x,y,backend,map_type='angle'):
             data = result.get_counts()
             if len(data)==1: return 0.0
             else: return data['001']/1024.0
-    else:
-        if map_type == 'probability':
-            qubits = np.ceil(np.log2(x.size))
-            n_x = np.zeros(2**qubits)
-            n_x[:x.size] = x
-            n_y = np.zeros(2**qubits)
-            n_y[:y.size] = y
-            qr = QuantumRegister(2*qubits + 1, name="qr")
-            cr = ClassicalRegister(2*qubits + 1, name="cr")
+    elif map_type == 'probability':
+        qubits = np.ceil(np.log2(x.size))
+        n_x = np.zeros(2**qubits)
+        n_x[:x.size] = x
+        n_y = np.zeros(2**qubits)
+        n_y[:y.size] = y
+        qr = QuantumRegister(2*qubits + 1, name="qr")
+        cr = ClassicalRegister(2*qubits + 1, name="cr")
 
-            qc = QuantumCircuit(qr, cr, name="k_means")
-            qc.initialize(x,[i+1 for i in range(qubits)])
-            qc.initialize(y,[i+1+qubits for i in range(qubits)])
+        qc = QuantumCircuit(qr, cr, name="k_means")
+        qc.initialize(x,[i+1 for i in range(qubits)])
+        qc.initialize(y,[i+1+qubits for i in range(qubits)])
 
-            qc.h(qr[0])
-            qc.cswap(qr[0], qr[1], qr[qubits+1])
-            qc.h(qr[0])
+        qc.h(qr[0])
+        qc.cswap(qr[0], qr[1], qr[qubits+1])
+        qc.h(qr[0])
 
-            qc.measure(qr[0], cr[0])
-            qc.reset(qr)
-            job = execute(qc,backend=backend, shots=1024)
-            result = job.result()
-            data = result.get_counts()
-            if len(data)==1: return 0.0
-            else: return data[list(data)[-1] == '1']
+        qc.measure(qr[0], cr[0])
+        qc.reset(qr)
+        job = execute(qc,backend=backend, shots=1024)
+        result = job.result()
+        data = result.get_counts()
+        if len(data)==1: return 0.0
+        else: return data[list(data)[-1] == '1']
 
 def batch_separate(X, clusters, max_experiments):
     """Creates batches of pairs of vectors.
@@ -475,7 +455,7 @@ def batch_distances(X, cluster_centers, backend, map_type, verbose):
     #if verbose: print('Distances are', distances)  
     return distances 
 
-def qkmeans_plusplus(X, n_clusters, backend, map_type, verbose, initial_center, x_squared_norms=None, n_local_trials=None, random_state=None):
+def qkmeans_plusplus(X, n_clusters, backend, map_type, verbose, initial_center, batch=True, x_squared_norms=None, n_local_trials=None, random_state=None):
     """Init n_clusters seeds according to qk-means++.
 
     Selects initial cluster centers for qk-mean clustering in a smart way to speed up convergence.
@@ -513,9 +493,10 @@ def qkmeans_plusplus(X, n_clusters, backend, map_type, verbose, initial_center, 
     indices[0] = center_id
     centers[0] = X.values[center_id]
 
-    if verbose: print('Centers are:', centers)
+    if verbose: print('Centers are:', pd.DataFrame(centers))
 
-    closest_distances = batch_distances(X, centers[0, np.newaxis], backend, map_type, verbose)
+    if batch: closest_distances = batch_distances(X, centers[0, np.newaxis], backend, map_type, verbose)
+    else: closest_distances = np.asarray([[distance(point,centroid,backend) for _, point in X.iterrows()] for _, centroid in pd.DataFrame(centers[0, np.newaxis]).iterrows()])
     current_pot = closest_distances.sum()
 
     #if verbose: print('Closest distances are:', closest_distances)
@@ -527,7 +508,8 @@ def qkmeans_plusplus(X, n_clusters, backend, map_type, verbose, initial_center, 
 
         np.clip(candidate_ids, None, closest_distances.size - 1, out=candidate_ids)
 
-        distance_to_candidates = batch_distances(X, X.values[candidate_ids], backend, map_type, verbose)
+        if batch: distance_to_candidates = batch_distances(X, X.values[candidate_ids], backend, map_type, verbose)
+        else: distance_to_candidates = np.asarray([[distance(point,centroid,backend) for _, point in X.iterrows()] for _, centroid in X.iloc[candidate_ids].iterrows()])
 
         np.minimum(closest_distances, distance_to_candidates,
                    out=distance_to_candidates)
@@ -541,18 +523,20 @@ def qkmeans_plusplus(X, n_clusters, backend, map_type, verbose, initial_center, 
         centers[c] = X.values[best_candidate]
         indices[c] = best_candidate
 
-        if verbose: print('Centers are:', centers)
+        if verbose: print('Centers are:', pd.DataFrame(centers))
         #if verbose: print('Closest distances are:', closest_distances)
 
         if c == 1 and initial_center == 'far':
-            closest_distances = batch_distances(X, centers[1, np.newaxis], backend, map_type, verbose)
+            if batch: closest_distances = batch_distances(X, centers[1, np.newaxis], backend, map_type, verbose)
+            else: closest_distances = np.asarray([[distance(point,centroid,backend) for _, point in X.iterrows()] for _, centroid in pd.DataFrame(centers[1, np.newaxis]).iterrows()])
             current_pot = closest_distances.sum()
             rand_vals = random_state.random_sample(n_local_trials) * current_pot
             candidate_ids = np.searchsorted(stable_cumsum(closest_distances), rand_vals)
 
             np.clip(candidate_ids, None, closest_distances.size - 1, out=candidate_ids)
 
-            distance_to_candidates = batch_distances(X, X.values[candidate_ids], backend, map_type, verbose)
+            if batch: distance_to_candidates = batch_distances(X, X.values[candidate_ids], backend, map_type, verbose)
+            else: distance_to_candidates = np.asarray([[distance(point,centroid,backend) for _, point in X.iterrows()] for _, centroid in X.iloc[candidate_ids].iterrows()])
 
             np.minimum(closest_distances, distance_to_candidates,
                     out=distance_to_candidates)
@@ -566,7 +550,7 @@ def qkmeans_plusplus(X, n_clusters, backend, map_type, verbose, initial_center, 
             centers[0] = X.values[best_candidate]
             indices[0] = best_candidate
 
-            if verbose: print('Centers are:', centers)
+            if verbose: print('Centers are:', pd.DataFrame(centers))
     
     return centers, indices
 
@@ -597,7 +581,7 @@ class QuantumKMeans():
         labels_: Centroid labels for each data point.
         n_iter_: Number of iterations run before convergence.
     """
-    def __init__(self, backend=IBMQ.load_account().get_backend('ibmq_qasm_simulator'), n_clusters=2, init='qk-means++', tol=0.0001, max_iter=300, verbose=False, map_type='angle', norm_relevance=False, initial_center='random'):
+    def __init__(self, backend=IBMQ.load_account().get_backend('ibmq_qasm_simulator'), n_clusters=2, init='qk-means++', tol=0.0001, max_iter=300, verbose=False, map_type='probability', norm_relevance=False, initial_center='random'):
         """Initializes an instance of the quantum k-means algorithm."""
         self.cluster_centers_ = np.empty(0)
         self.labels_ = np.empty(0)
@@ -625,7 +609,9 @@ class QuantumKMeans():
         finished = False
         X = pd.DataFrame(preprocess(X, self.map_type, self.norm_relevance))
         if self.verbose: print('Data is:',X)
-        if self.init == 'qk-means++': self.cluster_centers_, _ = qkmeans_plusplus(X, self.n_clusters, self.backend, self.map_type, self.verbose, self.initial_center)
+        if self.init == 'qk-means++': 
+            self.cluster_centers_, _ = qkmeans_plusplus(X, self.n_clusters, self.backend, self.map_type, self.verbose, self.initial_center, batch=batch)
+            self.cluster_centers_ = pd.DataFrame(self.cluster_centers_)
         elif self.init == 'random': self.cluster_centers_ = X.sample(n=self.n_clusters).reset_index(drop=True)
         iteration = 0
         while not finished and iteration<self.max_iter:
