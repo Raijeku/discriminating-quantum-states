@@ -1,4 +1,5 @@
 [![GitHub license](https://img.shields.io/github/license/Raijeku/discriminating-quantum-states)](https://github.com/Raijeku/discriminating-quantum-states/blob/main/LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2112.00313-red)](https://arxiv.org/abs/2112.00313)
 
 
 # Discriminating Quantum States with Quantum Machine Learning
